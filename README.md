@@ -27,7 +27,7 @@
 
 ## 示例
 
-![](http://ww1.sinaimg.cn/large/914fcb15ly1g1ckq82t08g223a16zkjt.gif)
+![](./pictures/1.gif)
 
 ## TODO
 
