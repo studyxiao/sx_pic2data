@@ -1,0 +1,26 @@
+html{
+    font-size: 18px;
+    font-family: '';
+}
+
+[v-cloak] {
+    display: none!important;
+}
+
+.title{
+    margin:20px;
+}
+
+.mark-cursor{
+    cursor: crosshair;
+}
+
+.shuoming * {
+    margin: 20px;
+    font-size: 16px;
+}
+
+.shuoming h2{
+    font-size: 18px;
+}
+

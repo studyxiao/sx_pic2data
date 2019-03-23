@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>二维图转数据 - 在线小工具</title>
+
+    <!-- import stylesheet -->
+    <!-- <link rel="stylesheet" href="./access/iview.css" /> -->
+    <link rel="stylesheet" href="http://cdn.studyxiao.cn/css/iview.css">
+    <link rel="stylesheet" href="./access/main.css" />
+
+    <!-- import Vue.js -->
+    <!-- <script src="./access/vue.min.js"></script> -->
+    <script crossorigin="anonymous" integrity="sha384-8t+aLluUVnn5SPPG/NbeZCH6TWIvaXIm/gDbutRvtEeElzxxWaZN+G/ZIEdI/f+y" src="https://lib.baomitu.com/vue/2.6.10/vue.min.js"></script>
+    <!-- import iView -->
+    <script crossorigin="anonymous" integrity="sha384-dqzXPU/+W+G5jRWSwSvbsFAY/dbEGOvbMQu1ocEA5bofaAXaLDODaBCvz8VYCwvp" src="https://lib.baomitu.com/iview/3.3.3/iview.min.js"></script>
+    <!-- <script src="./access/iview.min.js"></script> -->
+    <script src="./access/main.js"></script>
+    <!-- 百度统计 -->
+    <script>
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "https://hm.baidu.com/hm.js?cdd2300ddfd6e7f5fea15ebd61214419";
+          var s = document.getElementsByTagName("script")[0]; 
+          s.parentNode.insertBefore(hm, s);
+        })();
+        </script>
+        
+  </head>
+  <body>
+    <div id="app" v-cloak>
+      <!-- title -->
+      <Row type="flex" justify="center">
+        <h2 class="title">
+          把二维直角坐标系图片转变成具体数值的在线小工具
+        </h2>
+      </Row>
+
+      <Row type="flex" justify="center">
+        <i-col :xs="22" :md="20">
+          <Card dis-hover>
+            <div slot="title">
+              <!-- control -->
+              <Row :gutter="16">
+                <i-col :md="3" :xs="11">
+                  <i-button
+                    type="ghost"
+                    style="color: #3e3e3e;"
+                    @click="shuoming=true"
+                    >使用说明</i-button
+                  >
+                  <p></p>
+                </i-col>
+                <i-col :md="4" :xs="11">
+                  <i-button
+                    type="primary"
+                    @click="handleCoordinateMark('xstart')"
+                    >标记 x 轴起点</i-button
+                  >
+                  <p>x 轴起点值: {{ xStartValue }}</p>
+                </i-col>
+                <i-col :md="4" :xs="11">
+                  <i-button type="primary" @click="handleCoordinateMark('xend')"
+                    >标记 x 轴终点</i-button
+                  >
+                  <p>x 轴终点值: {{ xEndValue }}</p>
+                </i-col>
+                <i-col :md="4" :xs="11">
+                  <i-button
+                    type="primary"
+                    @click="handleCoordinateMark('ystart')"
+                    >标记 y 轴起点</i-button
+                  >
+                  <p>y 轴起点值: {{ yStartValue }}</p>
+                </i-col>
+                <i-col :md="4" :xs="11">
+                  <i-button type="primary" @click="handleCoordinateMark('yend')"
+                    >标记 y 轴终点</i-button
+                  >
+                  <p>y 轴终点值: {{ yEndValue }}</p>
+                </i-col>
+                <i-col :md="4" :xs="11">
+                  <i-input
+                    v-model="accuracy"
+                    placeholder="精确度"
+                    type="number"
+                    required
+                  ></i-input>
+                  <p>最后结果保留小数后几位</p>
+                </i-col>
+                <i-col :md="4" :xs="11">
+                  <i-button type="error" @click="refresh">重置</i-button>
+                  <p>重新选择一张图片</p>
+                </i-col>
+              </Row>
+            </div>
+            <Row type="flex" justify="center" class="code-row-bg">
+              <i-col :xs="22" :md="11">
+                <div
+                  @click="setMark"
+                  @mousemove="touchmove"
+                  :class="{'mark-cursor': markCursor}"
+                >
+                  <Upload
+                    ref="upload"
+                    v-if="canUpload"
+                    type="drag"
+                    action="/#"
+                    :before-upload="upload"
+                    :format="['jpg','jpeg','png']"
+                  >
+                    <div style="padding: 20px 0">
+                      <Icon
+                        type="ios-cloud-upload"
+                        size="52"
+                        style="color: #3399ff"
+                      ></Icon>
+                      <p>点击或将文件拖拽到这里加载</p>
+                    </div>
+                  </Upload>
+                  <img
+                    ref="img"
+                    v-else
+                    width="100%"
+                    height="auto"
+                    :src="img"
+                    alt=""
+                  />
+                </div>
+              </i-col>
+            </Row>
+          </Card>
+        </i-col>
+      </Row>
+
+      <!-- 表格 -->
+      <Row type="flex" justify="center">
+        <i-col :xs="22" :md="20">
+          <Card title="标记点坐标值" dis-hover style="min-height:800px">
+            <Row>
+              <i-button
+                icon="md-download"
+                :loading="exportLoading"
+                @click="exportExcel"
+                >数据导出到 excel</i-button
+              >
+              <i-table border :columns="columns7" :data="sortNodes"></i-table>
+            </Row>
+          </Card>
+        </i-col>
+      </Row>
+      <!-- footer -->
+      <Row type="flex" justify="center">
+        <p style="margin: 50px auto;font-size:16px;">
+          2019 &copy;
+          <a href="http://daohang.studyxiao.cn"> Studyxiao</a> | 技术支持
+          <a href="https://cn.vuejs.org/" target="_blank">Vue</a> &
+          <a href="https://iview.github.io/" target="blank">iView</a>
+        </p>
+      </Row>
+
+      <!-- 输入坐标 modal  -->
+      <Modal v-model="pointValueModel" width="360" @on-ok="ok">
+        <p slot="header" style="color:#f60;text-align:center">
+          <Icon type="information-circled"></Icon>
+          <span>输入当前标记点的 x 值或 y 值</span>
+        </p>
+        <div style="text-align:center">
+          <i-input
+            v-focus
+            v-model="pointValue"
+            placeholder="输入数值"
+            type="number"
+            required
+          ></i-input>
+        </div>
+      </Modal>
+      <!-- 说明 modal -->
+      <Modal v-model="shuoming" width="600">
+        <p slot="header" style="color:#f60;text-align:center">
+          <Icon type="information-circled"></Icon>
+          <span style="font-size:20px;">使用说明</span>
+        </p>
+        <div class="shuoming">
+          <p>
+            本工具用来把二维直角坐标系图片转变成具体数值，导出到 excel
+            后，生成矢量图。（精度受你点击位置影响很大，尤其坐标数轴值差较大时，故数据仅作为参考使用）
+          </p>
+          <h2 style="color:#f60">如何使用</h2>
+          <h3>1. 加载图片</h3>
+          <p>把要标记的图片通过拖拽或点击上传区域上传</p>
+          <h3>2. 标记坐标轴</h3>
+          <p>
+            点击【标记 x
+            轴起始点】，然后在图中相应点单击左键，会弹出对话框，需填入当前位置的横坐标值。
+            <br /><br />依次标记完【标记 x 轴起终点】、【标记 y
+            轴起始点】、【标记 y 轴起终点】，<b>标记y轴时应输入纵坐标值</b>。
+          </p>
+          <h3>3. 选择标记点</h3>
+          <p>
+            完成上述部分，即可在图上进行标记了，在需要标记的位置，单击左键，会在下方列表中增加数据，列表数据按照
+            x 轴从小到大排列
+          </p>
+          <h3>其它事项</h3>
+          <p>已知 BUG: 在标记过程中请勿调整浏览器窗口大小</p>
+          <p>
+            图片仅在本地显示，本工具不会上传用户任何数据（图片）。仅部分访问数据（访问时间、访问设备等），作为统计。
+          </p>
+          <p>
+            简单实现，满足自己目前需求，后续是否更新及完善，再看需求吧。谁的需求，谁知道呢
+            ~_~
+          </p>
+          <h3>示例</h3>
+          <img width="90%" height="auto" src="http://ww1.sinaimg.cn/large/914fcb15ly1g1ckq82t08g223a16zkjt.gif"/>
+        </div>
+      </Modal>
+    </div>
+
+    <!-- <script src="./access/xlsx.full.min.js"></script> -->
+    <script crossorigin="anonymous" integrity="sha384-m/TzZt0ykrLNcWKIbWS5Ki26N6AvwYe1BnqHriftAK8tohV7lhiLyXwUI3C8YdOD" src="https://lib.baomitu.com/xlsx/0.14.1/xlsx.full.min.js"></script>
+    <script>
+      var app = new Vue({
+        el: "#app",
+        data: {
+          shuoming: false, // 是否显示说明 modal
+          canUpload: true, // 当前是否为上传状态
+          img: "", // 图片
+          imgWidth: 0,
+          imgHeight: 0,
+          exportLoading: false, // 是否正在导出
+          markCursor: false, // 是否可以标记坐标
+          markType: null, // None-未设置好，XSTART XEND YSTART YEND
+          xStartValue: "",
+          xEndValue: "",
+          yStartValue: "",
+          yEndValue: "",
+          xStartCoordinate: { x: "", y: "" },
+          xEndCoordinate: { x: "", y: "" },
+          yStartCoordinate: { x: "", y: "" },
+          yEndCoordinate: { x: "", y: "" },
+          pointValueModel: false,
+          pointValue: null,
+          accuracy: 2, // 最后结果保留小数点后几位
+          x: "", //某点横坐标，临时值
+          y: "", //某点纵坐标，临时值
+          nodes: [],
+          myObserver: null,
+          columns7: [
+            {
+              title: "x 值",
+              key: "x"
+            },
+            {
+              title: "y 值",
+              key: "y"
+            },
+            {
+              title: "操作",
+              key: "action",
+              width: 150,
+              align: "center",
+              render(h, { row, column, index }) {
+                return h(
+                  "i-button",
+                  {
+                    props: { type: "primary" },
+                    on: {
+                      click: () => {
+                        app.remove(index);
+                      }
+                    }
+                  },
+                  "删除"
+                );
+              }
+            }
+          ]
+        },
+        methods: {
+          upload(file) {
+            // 加载图片
+            const img_url = window.URL.createObjectURL(file);
+            this.img = img_url;
+            this.canUpload = false;
+            this.$nextTick(() => {
+              const _img = this.$refs.img;
+              console.log(_img);
+              console.log(this.myObserver);
+              this.myObserver.observe(_img);
+            });
+            return false;
+          },
+          handleCoordinateMark(type) {
+            if (this.canUpload) {
+              this.$Message.error("请先加载一张图片");
+              return;
+            }
+            if (this.markType === type) {
+              this.markType = null;
+              this.markCursor = false;
+            } else {
+              this.markType = type;
+              this.markCursor = true;
+            }
+
+            switch (this.markType) {
+              case "xstart":
+                this.$Message.info("请在图中标记 x 起点");
+                break; //
+              case "xend":
+                this.$Message.info("请在图中标记 x 终点");
+                break; //
+              case "ystart":
+                this.$Message.info("请在图中标记 y 起点");
+                break; //
+              case "yend":
+                this.$Message.info("请在图中标记 y 终点");
+                break; //
+            }
+          },
+          setMark(e) {
+            // 在图上标记坐标点
+            if (this.markType && !this.canUpload) {
+              // 设置坐标点
+              this.setPointCoordination(e);
+
+              // 弹出 modal 填写当前值
+              this.pointValueModel = true;
+              return;
+            }
+            if (!this.markType && this.canMark) {
+              // 添加标记点
+              if (this.nodes.some(e => e.x == this.x && e.y == this.y)) {
+                this.$Message.info("已添加该点，请勿重复点击");
+                return;
+              }
+              this.nodes.push({ x: this.x, y: this.y });
+              const cur_node = this.$Message.success(
+                `设置标记点 (${this.x}, ${this.y}) 成功`
+              );
+              return
+            }
+            if(!this.canUpload){
+              
+            if(!this.xStartValue){
+              this.$Message.error('请标记 x 起点')
+            }
+            if(!this.xEndValue){
+              this.$Message.error('请标记 x 终点')
+            }
+            if(!this.yStartValue){
+              this.$Message.error('请标记 y 起点')
+            }
+            if(!this.yEndValue){
+              this.$Message.error('请标记 y 终点')
+            }
+            }
+          },
+          setPointCoordination(e) {
+            // 设置坐标点
+            const x = e.offsetX
+            const y = e.offsetY
+            switch (this.markType) {
+              case "xstart":
+                this.xStartCoordinate = { x, y };
+                break; //
+              case "xend":
+                this.xEndCoordinate = { x, y };
+                break; //
+              case "ystart":
+                this.yStartCoordinate = { x, y };
+                break; //
+              case "yend":
+                this.yEndCoordinate = { x, y };
+                break; //
+            }
+          },
+          ok() {
+            switch (this.markType) {
+              case "xstart":
+                this.xStartValue = this.pointValue;
+                break; //
+              case "xend":
+                this.xEndValue = this.pointValue;
+                break; //
+              case "ystart":
+                this.yStartValue = this.pointValue;
+                break; //
+              case "yend":
+                this.yEndValue = this.pointValue;
+                break; //
+            }
+            if (this.markCursor) {
+              this.markCursor = false;
+            }
+            if (this.markType) {
+              this.markType = null;
+            }
+            this.pointValue = "";
+          },
+          touchmove(e) {
+            if (!this.markType && this.canMark) {
+              const x =
+                parseFloat(this.xStartValue) +
+                (e.offsetX - this.xStartCoordinate["x"]) * this.perX;
+              const y =
+                parseFloat(this.yStartValue) +
+                (this.yStartCoordinate["y"] - e.offsetY) * this.perY;
+
+              this.x = x.toFixed(this.accuracy);
+              this.y = y.toFixed(this.accuracy);
+            }
+          },
+          remove(index) {
+            // 删除一个标记点
+            this.sortNodes.splice(index, 1);
+          },
+          exportExcel() {
+            // 导出到 excel
+            if (this.sortNodes.length) {
+              this.exportLoading = true;
+              const params = {
+                title: ["x值", "y值"],
+                key: ["x", "y"],
+                data: this.sortNodes,
+                autoWidth: true,
+                filename: "数据"
+              };
+              this.export_array_to_excel(params);
+              this.$Message.success("导出成功（浏览器默认下载位置查看）");
+              this.exportLoading = false;
+            } else {
+              this.$Message.info("表格数据不能为空！");
+            }
+          },
+          auto_width(ws, data) {
+            /*set worksheet max width per col*/
+            const colWidth = data.map(row =>
+              row.map(val => {
+                /*if null/undefined*/
+                if (val == null) {
+                  return { wch: 10 };
+                } else if (val.toString().charCodeAt(0) > 255) {
+                  /*if chinese*/
+                  return { wch: val.toString().length * 2 };
+                } else {
+                  return { wch: val.toString().length };
+                }
+              })
+            );
+            /*start in the first row*/
+            let result = colWidth[0];
+            for (let i = 1; i < colWidth.length; i++) {
+              for (let j = 0; j < colWidth[i].length; j++) {
+                if (result[j]["wch"] < colWidth[i][j]["wch"]) {
+                  result[j]["wch"] = colWidth[i][j]["wch"];
+                }
+              }
+            }
+            ws["!cols"] = result;
+          },
+          export_array_to_excel({ key, data, title, filename, autoWidth }) {
+            const wb = XLSX.utils.book_new();
+            const arr = this.json_to_array(key, data);
+            arr.unshift(title);
+            const ws = XLSX.utils.aoa_to_sheet(arr);
+            if (autoWidth) {
+              this.auto_width(ws, arr);
+            }
+            XLSX.utils.book_append_sheet(wb, ws, filename);
+            XLSX.writeFile(wb, filename + ".xlsx");
+          },
+          json_to_array(key, jsonData) {
+            return jsonData.map(v =>
+              key.map(j => {
+                return v[j];
+              })
+            );
+          },
+          refresh() {
+            // 重置
+            if (this.canUpload) {
+              return;
+            }
+            this.img = "";
+            this.canUpload = true;
+            this.markCursor = false; // 是否可以标记坐标
+            this.markType = null; // None-未设置好，XSTART XEND YSTART YEND
+            this.xStartValue = "";
+            this.xEndValue = "";
+            this.yStartValue = "";
+            this.yEndValue = "";
+            this.xStartCoordinate = { x: "", y: "" };
+            this.xEndCoordinate = { x: "", y: "" };
+            this.yStartCoordinate = { x: "", y: "" };
+            this.yEndCoordinate = { x: "", y: "" };
+            this.pointValueModel = false;
+            this.pointValue = null;
+            this.x = "";
+            this.y = "";
+            this.nodes = [];
+          },
+          get_img_size() {
+
+            // 监控 img dom 大小变化
+            this.myObserver = new ResizeObserver(entries => {
+              entries.forEach(entry => {
+                this.imgWidth = entry.contentRect.width
+                this.imgHeight = entry.contentRect.height
+              });
+            });
+          }
+        },
+        watch: {
+          canMark: val => {
+            if (val) {
+              app.$Message.info("开启你的标记之旅吧");
+            }
+          }
+        },
+        computed: {
+          perX: function() {
+            if (
+              this.xStartCoordinate &&
+              this.xEndCoordinate &&
+              this.xStartValue &&
+              this.xEndValue
+            ) {
+              return Math.abs(
+                (this.xEndValue - this.xStartValue) /
+                  (this.xEndCoordinate["x"] - this.xStartCoordinate["x"])
+              );
+            }
+            return "";
+          },
+          perY: function() {
+            if (
+              this.yStartCoordinate &&
+              this.yEndCoordinate &&
+              this.yStartValue &&
+              this.yEndValue
+            ) {
+              return Math.abs(
+                (this.yEndValue - this.yStartValue) /
+                  (this.yEndCoordinate["y"] - this.yStartCoordinate["y"])
+              );
+            }
+            return "";
+          },
+          canMark: function() {
+            return this.perX && this.perY;
+          },
+          sortNodes: function() {
+            return this.nodes.sort(function(a, b) {
+              return a.x - b.x;
+            });
+          }
+        },
+        mounted() {
+          this.get_img_size();
+        },
+        beforeDestroyed() {
+					if(this.observer) {
+						this.observer.disconnect()
+						this.observer.takeRecords()
+						this.observer = null
+					}
+				}
+      });
+    </script>
+  </body>
+</html>
